@@ -1,0 +1,12 @@
+/annotations/*
+!/annotations/README.md
+
+# XCode related
+.DS_Store
+xcuserdata/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.ipynb_checkpoints

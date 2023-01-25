@@ -1,0 +1,1 @@
+Open this folder in XCode, compile and copy output executable path to annotate.py
