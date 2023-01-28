@@ -72,48 +72,88 @@ def get_300W_lfpw_all(images_path, annotations_path):
     return chain(get_300W_lfpw_train(images_path, annotations_path),
         get_300W_lfpw_test(images_path, annotations_path))
 
-def get_300W_all(images_path, annotations_path):
+def get_300W_train(images_path, annotations_path):
     return chain(get_300W_afw(images_path, annotations_path),
            get_300W_ibug(images_path, annotations_path),
-           get_300W_helen_all(images_path, annotations_path),
-           get_300W_lfpw_all(images_path, annotations_path))
+           get_300W_helen_train(images_path, annotations_path),
+           get_300W_lfpw_train(images_path, annotations_path))
+def get_300W_test(images_path, annotations_path):
+    return chain(get_300W_helen_test(images_path, annotations_path),
+           get_300W_lfpw_test(images_path, annotations_path))
+def get_300W_all(images_path, annotations_path):
+    return chain(get_300W_train(images_path, annotations_path),
+           get_300W_test(images_path, annotations_path))
 
 def get_celeba_train(images_path, annotations_path):
     return chain(__simple(images_path, annotations_path, 'celeba_hq/train/female'),
         __simple(images_path, annotations_path, 'celeba_hq/train/male'))
-def get_celeba_val(images_path, annotations_path):
+def get_celeba_test(images_path, annotations_path):
     return chain(__simple(images_path, annotations_path, 'celeba_hq/val/female'),
         __simple(images_path, annotations_path, 'celeba_hq/val/male'))
 def get_celeba_all(images_path, annotations_path):
     return chain(get_celeba_train(images_path, annotations_path),
-        get_celeba_val(images_path, annotations_path))
+        get_celeba_test(images_path, annotations_path))
 
-def get_ffhq(images_path, annotations_path):
+# we have appointed the first 60,000 images to be used for training and the remaining 10,000 for validation
+# https://github.com/NVlabs/ffhq-dataset
+def __get_ffhq_subset(images_path, annotations_path, start, end):
     images_path = os.path.join(images_path, 'ffhq-dataset/images1024x1024')
     annotations_path = os.path.join(annotations_path, 'ffhq')
-    for idx in range(70000):
+    for idx in range(start, end):
         folder_name = f'{(idx // 1_000):02d}000'
         item_name = f'{idx:05d}'
         image_path = os.path.join(images_path, folder_name, item_name + '.png')
         annotation_path = os.path.join(annotations_path, folder_name, item_name + '.json')
         yield __make_pair(image_path, annotation_path)
+def get_ffhq_train(images_path, annotations_path):
+    return __get_ffhq_subset(images_path, annotations_path, 0, 60_000)
+def get_ffhq_test(images_path, annotations_path):
+    return __get_ffhq_subset(images_path, annotations_path, 60_000, 70_000)
+def get_ffhq_all(images_path, annotations_path):
+    return __get_ffhq_subset(images_path, annotations_path, 0, 70_000)
 
-def get_WFLW(images_path, annotations_path):
+def get_WFLW_all(images_path, annotations_path):
     images_path = os.path.join(images_path, 'WFLW/WFLW_images')
     annotations_path = os.path.join(annotations_path, 'WFLW')
     subfolders = os.listdir(annotations_path)
     for subfolder in subfolders:
         files = os.listdir(os.path.join(annotations_path, subfolder))
         for file in files:
+            assert file.endswith('.json')
             image_path = os.path.join(images_path, subfolder, file[:-5] + '.jpg')
             annotation_path = os.path.join(annotations_path, subfolder, file)
             yield __make_pair(image_path, annotation_path)
+def __wflw_filter(images_path, annotations_path, train: bool):
+    txt_path = os.path.join(os.path.dirname(__file__), 'wflw_test_split.txt')
+    with open(txt_path, 'r') as f:
+        test_names = set([l.strip() for l in f.readlines()])
+    def __filter(x):
+        sample_name = '/'.join(x.image_path.split('/')[-2:])
+        if train:
+            return sample_name not in test_names
+        else:
+            return sample_name in test_names
+    return filter(__filter, get_WFLW_all(images_path, annotations_path))
+def get_WFLW_train(images_path, annotations_path):
+    return __wflw_filter(images_path, annotations_path, True)
+def get_WFLW_test(images_path, annotations_path):
+    return __wflw_filter(images_path, annotations_path, False)
 
+def get_train(images_path, annotations_path):
+    return chain(get_300W_train(images_path, annotations_path),
+        get_celeba_train(images_path, annotations_path),
+        get_ffhq_train(images_path, annotations_path),
+        get_WFLW_train(images_path, annotations_path))
+def get_test(images_path, annotations_path):
+    return chain(get_300W_test(images_path, annotations_path),
+        get_celeba_test(images_path, annotations_path),
+        get_ffhq_test(images_path, annotations_path),
+        get_WFLW_test(images_path, annotations_path))
 def get_all(images_path, annotations_path):
     return chain(get_300W_all(images_path, annotations_path),
         get_celeba_all(images_path, annotations_path),
-        get_ffhq(images_path, annotations_path),
-        get_WFLW(images_path, annotations_path))
+        get_ffhq_all(images_path, annotations_path),
+        get_WFLW_all(images_path, annotations_path))
 
 if __name__ == '__main__':
     IMAGES_DIR = '/media/pupa/DataStorage/datasets'
