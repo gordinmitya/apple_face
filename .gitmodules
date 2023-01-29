@@ -1,0 +1,3 @@
+[submodule "torchlm"]
+	path = torchlm
+	url = https://github.com/DefTruth/torchlm.git
